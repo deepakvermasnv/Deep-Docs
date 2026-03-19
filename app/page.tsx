@@ -507,6 +507,7 @@ export default function Home() {
         )}
         {currentDoc && currentOwnerId && currentDocId ? (
           <Editor
+            key={currentDocId}
             ownerId={currentOwnerId}
             docId={currentDocId}
             content={currentDoc.content}
