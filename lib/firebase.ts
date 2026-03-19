@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// ✅ Firebase config (same project use karo jisme domain add karoge)
 const firebaseConfig = {
   apiKey: "AIzaSyDzqSfnQAu2wSsGMtnz_LDb1qU5gB8wcxQ",
   authDomain: "gen-lang-client-0161708816.firebaseapp.com",
@@ -11,10 +12,20 @@ const firebaseConfig = {
   appId: "1:967257916518:web:be58e5d121a7f5ca67d9a7"
 };
 
-// Initialize Firebase
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// ✅ Initialize Firebase (safe for Next.js)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// ✅ Auth setup
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
-const db = getFirestore(app, "ai-studio-60ca3e89-83f1-4975-9207-8875c0e34bf8");
 
+// ✅ Optional: force account selection
+provider.setCustomParameters({
+  prompt: "select_account"
+});
+
+// ✅ Firestore setup (FIXED)
+const db = getFirestore(app);
+
+// ✅ Export
 export { auth, provider, db };
