@@ -38,53 +38,90 @@ const Sidebar = ({
 }: SidebarProps) => {
   return (
     <aside className="w-72 bg-[#F8F9FA] dark:bg-[#1A1C1E] border-r border-gray-200 dark:border-gray-800 flex flex-col h-full transition-colors">
-      <div className="p-4">
+      <div className="p-5">
         <button
           onClick={onNewDoc}
-          className="flex items-center gap-3 bg-white dark:bg-[#2D2F31] hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm px-5 py-3.5 rounded-2xl w-fit transition-all hover:shadow-md text-gray-700 dark:text-gray-200"
+          className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 px-6 py-3.5 rounded-2xl w-full transition-all active:scale-95 group"
         >
-          <Plus size={24} className="text-blue-600" />
-          <span className="font-medium">New</span>
+          <div className="bg-white/20 p-1 rounded-lg group-hover:scale-110 transition-transform">
+            <Plus size={20} className="text-white" />
+          </div>
+          <span className="font-bold text-sm tracking-tight">New Document</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2">
-        <div className="mb-4">
-          <div className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <span>{currentView === 'recent' ? 'Recent' : currentView === 'starred' ? 'Starred' : 'Trash'}</span>
+      <div className="flex-1 overflow-y-auto px-3 space-y-6">
+        <div>
+          <div className="space-y-1">
+            <button 
+              onClick={() => onViewChange('recent')}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                currentView === 'recent' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Clock size={20} />
+              <span>Recent</span>
+            </button>
+            <button 
+              onClick={() => onViewChange('starred')}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                currentView === 'starred' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Star size={20} className={currentView === 'starred' ? 'fill-blue-700 dark:fill-blue-400' : ''} />
+              <span>Starred</span>
+            </button>
+            <button 
+              onClick={() => onViewChange('trash')}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                currentView === 'trash' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <Trash2 size={20} />
+              <span>Trash</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between px-4 py-2 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em]">
+            <span>{currentView === 'recent' ? 'Recent Documents' : currentView === 'starred' ? 'Starred Documents' : 'Trash Items'}</span>
             {currentView === 'trash' && documents.length > 0 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onEmptyTrash();
                 }}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 normal-case font-medium hover:underline"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 normal-case font-semibold hover:underline"
               >
-                Empty Trash
+                Empty
               </button>
             )}
           </div>
-          <div className="space-y-0.5">
+          <div className="mt-2 space-y-1">
             {documents.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500 italic">
-                No documents found
+              <div className="px-4 py-10 text-center flex flex-col items-center gap-2">
+                <FileText size={32} className="text-gray-200 dark:text-gray-800" />
+                <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">No documents here</p>
               </div>
             ) : (
               documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className={`group flex items-center justify-between w-full px-4 py-2.5 rounded-r-full text-sm transition-colors cursor-pointer ${
+                  className={`group flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-sm transition-all cursor-pointer border border-transparent ${
                     currentDocId === doc.id
-                      ? 'bg-[#E3E3E3] dark:bg-[#3C4043] text-[#1F1F1F] dark:text-[#E8EAED]'
-                      : 'text-[#444746] dark:text-[#9AA0A6] hover:bg-[#EAEAEA] dark:hover:bg-[#2D2F31]'
+                      ? 'bg-white dark:bg-[#2D2F31] text-gray-900 dark:text-gray-100 shadow-sm border-gray-200 dark:border-gray-700'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-800/30'
                   }`}
                   onClick={() => onDocSelect(doc.id)}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <FileText size={18} className="text-blue-600 flex-shrink-0" />
+                    <div className={`p-1.5 rounded-lg ${currentDocId === doc.id ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                      <FileText size={16} className="text-blue-600 flex-shrink-0" />
+                    </div>
                     <div className="flex flex-col items-start overflow-hidden">
-                      <span className="truncate w-full text-left font-medium">{doc.title || 'Untitled document'}</span>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400">{doc.lastOpened}</span>
+                      <span className="truncate w-full text-left font-bold text-gray-800 dark:text-gray-200 leading-tight">{doc.title || 'Untitled document'}</span>
+                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{doc.lastOpened}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -95,7 +132,7 @@ const Sidebar = ({
                             e.stopPropagation();
                             onDocRestore(doc.id);
                           }}
-                          className="p-1.5 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg text-gray-400 hover:text-blue-600 transition-colors"
                           title="Restore"
                         >
                           <RotateCcw size={16} />
@@ -105,7 +142,7 @@ const Sidebar = ({
                             e.stopPropagation();
                             onDocPermanentDelete(doc.id);
                           }}
-                          className="p-1.5 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-gray-400 hover:text-red-600 transition-colors"
                           title="Delete permanently"
                         >
                           <X size={16} />
@@ -117,7 +154,7 @@ const Sidebar = ({
                           e.stopPropagation();
                           onDocDelete(doc.id);
                         }}
-                        className="p-1.5 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-gray-400 hover:text-red-600 transition-colors"
                         title="Move to trash"
                       >
                         <Trash2 size={16} />
@@ -129,41 +166,11 @@ const Sidebar = ({
             )}
           </div>
         </div>
-
-        <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-          <button 
-            onClick={() => onViewChange('recent')}
-            className={`flex items-center gap-3 w-full px-4 py-2 text-sm rounded-lg transition-colors ${
-              currentView === 'recent' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Clock size={18} />
-            <span>Recent</span>
-          </button>
-          <button 
-            onClick={() => onViewChange('starred')}
-            className={`flex items-center gap-3 w-full px-4 py-2 text-sm rounded-lg transition-colors ${
-              currentView === 'starred' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Star size={18} className={currentView === 'starred' ? 'fill-blue-700 dark:fill-blue-400' : ''} />
-            <span>Starred</span>
-          </button>
-          <button 
-            onClick={() => onViewChange('trash')}
-            className={`flex items-center gap-3 w-full px-4 py-2 text-sm rounded-lg transition-colors ${
-              currentView === 'trash' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Trash2 size={18} />
-            <span>Trash</span>
-          </button>
-        </div>
       </div>
 
-      <div className="p-4 border-t border-gray-100 dark:border-gray-800">
-        <button className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-          <Settings size={18} />
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20">
+        <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 rounded-xl transition-colors">
+          <Settings size={20} />
           <span>Settings</span>
         </button>
       </div>

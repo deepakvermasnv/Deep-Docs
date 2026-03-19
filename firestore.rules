@@ -85,9 +85,9 @@ service cloud.firestore {
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
 
       match /docs/{docId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isAuthenticated();
         allow create: if isOwner(userId) && isValidDocument(request.resource.data);
-        allow update: if isOwner(userId) && isValidDocument(request.resource.data);
+        allow update: if isAuthenticated() && isValidDocument(request.resource.data);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

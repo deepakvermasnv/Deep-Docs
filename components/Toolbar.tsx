@@ -33,6 +33,67 @@ interface ToolbarProps {
   editor: Editor | null;
 }
 
+const ToolbarDropdown = ({ 
+  value, 
+  options, 
+  onChange, 
+  width = 'w-32',
+  prefix = ''
+}: { 
+  value: string; 
+  options: { label: string; value: string }[]; 
+  onChange: (val: string) => void;
+  width?: string;
+  prefix?: string;
+}) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(opt => opt.value === value) || options[0];
+
+  return (
+    <div className={`relative ${width}`} ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
+      >
+        <span className="truncate">{prefix}{selectedOption.label}</span>
+        <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 max-h-60 overflow-y-auto no-scrollbar">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                value === opt.value 
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold' 
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Toolbar = ({ editor }: ToolbarProps) => {
   if (!editor) return null;
 
@@ -91,12 +152,18 @@ const Toolbar = ({ editor }: ToolbarProps) => {
   ];
 
   const zoomLevels = [
-    '50%', '75%', '90%', '100%', '125%', '150%', '200%'
+    { label: '50%', value: '50%' },
+    { label: '75%', value: '75%' },
+    { label: '90%', value: '90%' },
+    { label: '100%', value: '100%' },
+    { label: '125%', value: '125%' },
+    { label: '150%', value: '150%' },
+    { label: '200%', value: '200%' },
   ];
 
   const fontSizes = [
     '8', '9', '10', '11', '12', '14', '18', '24', '30', '36', '48', '60', '72', '96'
-  ];
+  ].map(size => ({ label: size, value: size }));
 
   const buttons = [
     {
@@ -121,56 +188,41 @@ const Toolbar = ({ editor }: ToolbarProps) => {
     {
       type: 'custom',
       component: (
-        <select
-          className="bg-transparent text-sm font-medium text-gray-700 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none cursor-pointer"
-          defaultValue="100%"
-          onChange={(e) => {
-            const zoom = e.target.value.replace('%', '');
+        <ToolbarDropdown
+          value="100%"
+          options={zoomLevels}
+          width="w-24"
+          onChange={(val) => {
+            const zoom = val.replace('%', '');
             const editorArea = document.querySelector('.ProseMirror') as HTMLElement;
             if (editorArea) {
               editorArea.style.zoom = `${parseInt(zoom) / 100}`;
             }
           }}
-        >
-          {zoomLevels.map((level) => (
-            <option key={level} value={level} className="bg-white dark:bg-[#1A1C1E]">
-              {level}
-            </option>
-          ))}
-        </select>
+        />
       ),
     },
     { type: 'divider' },
     {
       type: 'custom',
       component: (
-        <select
-          className="bg-transparent text-sm font-medium text-gray-700 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none cursor-pointer"
-          onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+        <ToolbarDropdown
           value={editor.getAttributes('textStyle').fontFamily || 'Arial'}
-        >
-          {fonts.map((font) => (
-            <option key={font.value} value={font.value} className="bg-white dark:bg-[#1A1C1E]">
-              {font.label}
-            </option>
-          ))}
-        </select>
+          options={fonts}
+          width="w-36"
+          onChange={(val) => editor.chain().focus().setFontFamily(val).run()}
+        />
       ),
     },
     {
       type: 'custom',
       component: (
-        <select
-          className="bg-transparent text-sm font-medium text-gray-700 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none cursor-pointer"
-          onChange={(e) => (editor.chain().focus() as any).setFontSize(`${e.target.value}px`).run()}
+        <ToolbarDropdown
           value={editor.getAttributes('textStyle').fontSize?.replace('px', '') || '16'}
-        >
-          {fontSizes.map((size) => (
-            <option key={size} value={size} className="bg-white dark:bg-[#1A1C1E]">
-              {size}
-            </option>
-          ))}
-        </select>
+          options={fontSizes}
+          width="w-20"
+          onChange={(val) => (editor.chain().focus() as any).setFontSize(`${val}px`).run()}
+        />
       ),
     },
     { type: 'divider' },
@@ -309,10 +361,10 @@ const Toolbar = ({ editor }: ToolbarProps) => {
   ];
 
   return (
-    <div className="flex items-center flex-wrap gap-1 p-1 bg-[#EDF2FA] dark:bg-[#2D2F31] rounded-full mx-auto max-w-fit shadow-sm border border-gray-200 dark:border-gray-700 mt-2 sticky top-0 z-10 transition-colors">
+    <div className="sticky top-0 z-20 bg-white dark:bg-[#1A1C1E] border-b border-gray-200 dark:border-gray-800 px-4 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar transition-colors">
       {buttons.map((btn, i) => {
         if (btn.type === 'divider') {
-          return <div key={i} className="w-[1px] h-6 bg-gray-300 dark:bg-gray-600 mx-1" />;
+          return <div key={i} className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1.5 flex-shrink-0" />;
         }
         if (btn.type === 'custom') {
           return <React.Fragment key={i}>{btn.component}</React.Fragment>;
@@ -321,12 +373,16 @@ const Toolbar = ({ editor }: ToolbarProps) => {
           <button
             key={i}
             onClick={btn.onClick}
-            className={`p-1.5 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 ${
-              btn.isActive ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
+            className={`p-1.5 rounded-lg transition-all flex-shrink-0 group relative ${
+              btn.isActive 
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
             title={btn.label}
           >
-            {btn.icon}
+            <div className="group-hover:scale-110 transition-transform">
+              {btn.icon}
+            </div>
           </button>
         );
       })}

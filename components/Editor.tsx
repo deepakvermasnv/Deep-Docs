@@ -15,6 +15,8 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Image from '@tiptap/extension-image';
 import { Extension } from '@tiptap/core';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Toolbar from './Toolbar';
 
 const FontSize = Extension.create({
@@ -63,13 +65,15 @@ const FontSize = Extension.create({
 });
 
 interface EditorProps {
+  ownerId: string;
+  docId: string;
   content: string;
   onChange: (content: string) => void;
   onEditorReady?: (editor: TiptapEditor | null) => void;
   darkMode?: boolean;
 }
 
-const Editor = ({ content, onChange, onEditorReady, darkMode }: EditorProps) => {
+const Editor = ({ ownerId, docId, content, onChange, onEditorReady, darkMode }: EditorProps) => {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -120,30 +124,44 @@ const Editor = ({ content, onChange, onEditorReady, darkMode }: EditorProps) => 
     },
   });
 
-  // Update editor content when document changes
+  // Update editor content when document changes in Firestore (Real-time Sync)
   React.useEffect(() => {
-    if (editor && content) {
-      const currentContent = JSON.stringify(editor.getJSON());
-      if (content !== currentContent) {
-        try {
-          const parsedContent = content ? JSON.parse(content) : '';
-          editor.commands.setContent(parsedContent);
-        } catch (e) {
-          // If parsing fails, it might be raw HTML or plain text
-          editor.commands.setContent(content);
+    if (!editor || !ownerId || !docId) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', ownerId, 'docs', docId), (snapshot: any) => {
+      if (!snapshot.exists()) return;
+      
+      const data = snapshot.data();
+      const remoteContent = data.content;
+      
+      if (remoteContent) {
+        const currentContent = JSON.stringify(editor.getJSON());
+        
+        // Only update if content is different AND user is not typing (not focused)
+        // This prevents infinite loops and cursor jumps while typing
+        if (remoteContent !== currentContent && !editor.isFocused) {
+          try {
+            const parsedContent = JSON.parse(remoteContent);
+            editor.commands.setContent(parsedContent, { emitUpdate: false }); // false to not emit update event
+          } catch (e) {
+            // If parsing fails, it might be raw HTML or plain text
+            editor.commands.setContent(remoteContent, { emitUpdate: false });
+          }
         }
       }
-    } else if (editor && !content) {
-      editor.commands.setContent('');
-    }
-  }, [content, editor]);
+    }, (error: any) => {
+      console.error("Error in real-time sync:", error);
+    });
+
+    return () => unsubscribe();
+  }, [editor, ownerId, docId]);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden bg-[#F8F9FA] dark:bg-[#0E1113] transition-colors">
       <Toolbar editor={editor} />
-      <div className="flex-1 overflow-y-auto p-8 flex justify-center">
-        <div className="w-[816px] min-h-[1056px] bg-white dark:bg-[#1A1C1E] shadow-md dark:shadow-2xl mb-20 transition-colors">
-          <EditorContent editor={editor} />
+      <div className="flex-1 overflow-y-auto p-4 md:p-10 flex justify-center no-scrollbar">
+        <div className="w-full max-w-[816px] min-h-[1056px] bg-white dark:bg-[#1A1C1E] shadow-[0_0_50px_rgba(0,0,0,0.05)] dark:shadow-[0_0_50px_rgba(0,0,0,0.3)] mb-20 transition-all border border-gray-200/50 dark:border-gray-800/50 rounded-sm">
+          <EditorContent editor={editor} className="prose prose-sm sm:prose-base dark:prose-invert max-w-none" />
         </div>
       </div>
     </div>

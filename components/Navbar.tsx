@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { 
   FileText, 
   Star, 
@@ -81,42 +82,51 @@ const Navbar = ({
   ];
 
   return (
-    <nav className="flex flex-col bg-white dark:bg-[#202124] border-b border-gray-200 dark:border-gray-700 px-4 py-2 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-1">
-            <FileText size={32} className="text-blue-600" />
+    <nav className="flex flex-col bg-white dark:bg-[#1A1C1E] border-b border-gray-200 dark:border-gray-800 px-4 py-1.5 transition-colors sticky top-0 z-30">
+      <div className="flex items-center justify-between h-14">
+        <div className="flex items-center gap-3">
+          <div className="p-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" onClick={onNewDoc}>
+            <FileText size={36} className="text-blue-600" />
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1">
               <input
                 type="text"
                 value={title}
                 onChange={(e) => onTitleChange(e.target.value)}
-                className="text-lg font-medium text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 border border-transparent px-1 rounded focus:outline-none focus:border-blue-500 transition-colors bg-transparent"
+                className="text-lg font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent px-2 py-0.5 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-transparent min-w-[100px] max-w-[400px]"
                 placeholder="Untitled document"
               />
-              <button onClick={onToggleStar}>
+              <button 
+                onClick={onToggleStar}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              >
                 <Star 
                   size={16} 
-                  className={`transition-colors ${isStarred ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400 dark:text-gray-500 hover:text-yellow-400'}`} 
+                  className={`transition-all ${isStarred ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-gray-400 dark:text-gray-500 hover:text-yellow-400'}`} 
                 />
               </button>
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{saveStatus}</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 ml-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'Saving...' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">{saveStatus}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            <div className="flex items-center gap-0.5 -ml-1">
               {menus.map((menu) => (
-                <div key={menu.label} className="relative group">
+                <div 
+                  key={menu.label} 
+                  className="relative"
+                  onMouseEnter={() => setActiveMenu(menu.label)}
+                  onMouseLeave={() => setActiveMenu(null)}
+                >
                   <button 
-                    onMouseEnter={() => setActiveMenu(menu.label)}
-                    className="hover:bg-gray-100 dark:hover:bg-gray-800 px-2 py-0.5 rounded transition-colors"
+                    className={`px-2.5 py-1 rounded-md transition-colors text-sm font-medium ${activeMenu === menu.label ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     {menu.label}
                   </button>
                   {activeMenu === menu.label && (
                     <div 
-                      onMouseLeave={() => setActiveMenu(null)}
-                      className="absolute top-full left-0 mt-1 w-56 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-200"
+                      className="absolute top-full left-0 mt-0.5 w-56 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150"
                     >
                       {menu.items.map((item) => (
                         <button
@@ -125,10 +135,10 @@ const Navbar = ({
                             item.onClick();
                             setActiveMenu(null);
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
                         >
                           <span className="text-gray-400 dark:text-gray-500">{item.icon}</span>
-                          {item.label}
+                          <span className="flex-1">{item.label}</span>
                         </button>
                       ))}
                     </div>
@@ -139,58 +149,68 @@ const Navbar = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onToggleDarkMode}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-600 dark:text-gray-400"
-            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full cursor-pointer transition-colors">
-            <MessageSquare size={18} className="text-blue-700 dark:text-blue-400" />
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1 mr-2">
+            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400" title="Comments">
+              <MessageSquare size={20} />
+            </button>
+            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500 dark:text-gray-400" title="Join call">
+              <Video size={20} />
+            </button>
           </div>
-          <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full cursor-pointer transition-colors">
-            <Video size={18} className="text-blue-700 dark:text-blue-400" />
-          </div>
+
           <button 
             onClick={onShare}
-            className="flex items-center gap-2 bg-[#C2E7FF] dark:bg-[#004A77] hover:bg-[#B3D7EF] dark:hover:bg-[#005A8F] text-[#001D35] dark:text-[#C2E7FF] px-6 py-2 rounded-full font-medium text-sm transition-colors"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-semibold text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
           >
-            <Lock size={16} />
-            Share
+            <Share2 size={18} />
+            <span>Share</span>
           </button>
           
-          <div className="relative group">
-            <button className="flex items-center gap-2 p-1 pr-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+          <div className="relative group ml-1">
+            <button className="flex items-center gap-2 p-0.5 rounded-full hover:ring-4 hover:ring-gray-100 dark:hover:ring-gray-800 transition-all">
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700" />
+                <Image 
+                  src={user.photoURL} 
+                  alt={user.displayName || ''} 
+                  width={36} 
+                  height={36} 
+                  className="rounded-full border border-gray-200 dark:border-gray-700 object-cover" 
+                  referrerPolicy="no-referrer"
+                />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold shadow-inner">
                   {user.displayName?.charAt(0) || 'U'}
                 </div>
               )}
             </button>
             
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 py-4 hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="px-4 pb-4 border-b border-gray-100 dark:border-gray-800 text-center">
+            <div className="absolute right-0 top-full mt-3 w-72 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 py-5 hidden group-hover:block animate-in fade-in slide-in-from-top-3 duration-200 origin-top-right">
+              <div className="px-6 pb-5 border-b border-gray-100 dark:border-gray-800 text-center">
                 {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.displayName || ''} className="w-16 h-16 rounded-full mx-auto mb-2 border-2 border-blue-100 dark:border-blue-900" />
+                  <Image 
+                    src={user.photoURL} 
+                    alt={user.displayName || ''} 
+                    width={80} 
+                    height={80} 
+                    className="rounded-full mx-auto mb-3 border-4 border-blue-50 dark:border-blue-900/30 object-cover shadow-sm" 
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-2">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-3 shadow-lg">
                     {user.displayName?.charAt(0) || 'U'}
                   </div>
                 )}
-                <p className="font-medium text-gray-900 dark:text-gray-100">{user.displayName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                <p className="font-semibold text-gray-900 dark:text-gray-100 text-lg leading-tight">{user.displayName}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{user.email}</p>
               </div>
-              <div className="pt-2">
+              <div className="px-2 pt-3">
                 <button 
                   onClick={onLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                 >
-                  <LogOut size={16} />
-                  Sign out
+                  <LogOut size={18} />
+                  <span>Sign out</span>
                 </button>
               </div>
             </div>

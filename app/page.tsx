@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Link as LinkIcon, Trash2 } from 'lucide-react';
+import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import Editor from '@/components/Editor';
@@ -40,6 +41,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
+  const [currentOwnerId, setCurrentOwnerId] = useState<string | null>(null);
   const [view, setView] = useState<'recent' | 'starred' | 'trash'>('recent');
   const [saveStatus, setSaveStatus] = useState<'Saving...' | 'Saved'>('Saved');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -64,6 +66,18 @@ export default function Home() {
       setLoading(false);
       
       if (user) {
+        // Check for docId and ownerId in URL
+        const params = new URLSearchParams(window.location.search);
+        const urlDocId = params.get('docId');
+        const urlOwnerId = params.get('ownerId');
+        
+        if (urlDocId && urlOwnerId) {
+          setCurrentDocId(urlDocId);
+          setCurrentOwnerId(urlOwnerId);
+        } else {
+          setCurrentOwnerId(user.uid);
+        }
+
         // Save user profile to Firestore
         try {
           const userRef = doc(db, 'users', user.uid);
@@ -111,6 +125,7 @@ export default function Home() {
       return;
     }
 
+    // Listener for the user's own documents
     const q = query(
       collection(db, 'users', user.uid, 'docs'),
       orderBy('updatedAt', 'desc')
@@ -126,8 +141,11 @@ export default function Home() {
       setDocuments(docs);
       
       // If no doc selected and we have docs, select the first one
-      if (!currentDocId && docs.length > 0) {
+      // Only do this if we're not loading a specific doc from URL
+      const params = new URLSearchParams(window.location.search);
+      if (!currentDocId && docs.length > 0 && !params.get('docId')) {
         setCurrentDocId(docs[0].id);
+        setCurrentOwnerId(user.uid);
       }
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/docs`);
@@ -136,7 +154,39 @@ export default function Home() {
     return () => unsubscribe();
   }, [user, currentDocId]);
 
-  const currentDoc = documents.find((doc) => doc.id === currentDocId) || (documents.length > 0 ? documents[0] : null);
+  // Listener for the current document (especially if it's shared)
+  useEffect(() => {
+    if (!user || !currentDocId || !currentOwnerId) return;
+    
+    // If it's our own doc, the collection listener already handles it
+    if (currentOwnerId === user.uid) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', currentOwnerId, 'docs', currentDocId), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const sharedDoc = {
+          id: snapshot.id,
+          ...data,
+          lastOpened: data.updatedAt ? `Updated ${new Date(data.updatedAt.seconds * 1000).toLocaleDateString()}` : 'Just now'
+        } as Document;
+        
+        // Add or update the shared doc in the documents list
+        setDocuments(prev => {
+          const exists = prev.find(d => d.id === sharedDoc.id);
+          if (exists) {
+            return prev.map(d => d.id === sharedDoc.id ? sharedDoc : d);
+          }
+          return [sharedDoc, ...prev];
+        });
+      }
+    }, (error) => {
+      handleFirestoreError(error, 'get', `users/${currentOwnerId}/docs/${currentDocId}`);
+    });
+
+    return () => unsubscribe();
+  }, [user, currentDocId, currentOwnerId]);
+
+  const currentDoc = documents.find((doc) => doc.id === currentDocId) || (documents.length > 0 && !currentDocId ? documents[0] : null);
 
   const filteredDocuments = documents.filter((doc) => {
     if (view === 'trash') return doc.isTrashed;
@@ -180,7 +230,14 @@ export default function Home() {
       
       const docRef = await addDoc(collection(db, 'users', user.uid, 'docs'), newDocData);
       setCurrentDocId(docRef.id);
+      setCurrentOwnerId(user.uid);
       setView('recent');
+      
+      // Update URL
+      const url = new URL(window.location.href);
+      url.searchParams.set('docId', docRef.id);
+      url.searchParams.set('ownerId', user.uid);
+      window.history.pushState({}, '', url);
     } catch (error) {
       console.error("Error creating new document", error);
     }
@@ -188,6 +245,12 @@ export default function Home() {
 
   const handleDocSelect = (id: string) => {
     setCurrentDocId(id);
+    setCurrentOwnerId(user?.uid || null);
+    // Update URL without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.set('docId', id);
+    url.searchParams.set('ownerId', user?.uid || '');
+    window.history.pushState({}, '', url);
   };
 
   const handleDocDelete = async (id: string) => {
@@ -433,29 +496,34 @@ export default function Home() {
           user={user}
           onLogout={handleLogout}
         />
-        {user && currentDocId && (
+        {user && currentDocId && currentOwnerId && (
           <AutoSave
-            userId={user.uid}
+            userId={currentOwnerId}
             docId={currentDocId}
             content={currentDoc?.content || ''}
             title={currentDoc?.title || ''}
             onStatusChange={setSaveStatus}
           />
         )}
-        {currentDoc ? (
+        {currentDoc && currentOwnerId && currentDocId ? (
           <Editor
+            ownerId={currentOwnerId}
+            docId={currentDocId}
             content={currentDoc.content}
             onChange={handleContentChange}
             onEditorReady={setEditor}
             darkMode={darkMode}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#F8F9FA] dark:bg-[#0E1113] text-gray-500">
-            <Plus size={48} className="mb-4 opacity-20" />
-            <p>Select a document or create a new one</p>
+          <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#0F1012] text-gray-500 p-8 transition-colors">
+            <div className="w-24 h-24 bg-white dark:bg-[#1A1C1E] rounded-3xl shadow-sm flex items-center justify-center mb-6 border border-gray-200 dark:border-gray-800">
+              <Plus size={40} className="text-blue-600 opacity-40" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">No document selected</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 text-center max-w-xs">Select a document from the sidebar or create a new one to start writing.</p>
             <button 
               onClick={handleNewDoc}
-              className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
             >
               New Document
             </button>
@@ -464,55 +532,71 @@ export default function Home() {
       </div>
 
       {isShareModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#2D2F31] rounded-3xl p-8 w-[500px] shadow-2xl transition-colors">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-normal text-gray-800 dark:text-gray-100">Share &quot;{currentDoc?.title}&quot;</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#1A1C1E] rounded-[32px] p-8 w-full max-w-[540px] shadow-2xl transition-all border border-gray-200 dark:border-gray-800 scale-in-center">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Share document</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate max-w-[400px]">{currentDoc?.title}</p>
+              </div>
               <button 
                 onClick={() => setIsShareModalOpen(false)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
               >
-                <Plus size={24} className="rotate-45 text-gray-600 dark:text-gray-400" />
+                <Plus size={24} className="rotate-45 text-gray-400" />
               </button>
             </div>
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.displayName || ''} className="w-10 h-10 rounded-full" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                    {user.displayName?.charAt(0) || 'U'}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.displayName} (you)</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+            
+            <div className="space-y-8">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <div className="relative">
+                  {user.photoURL ? (
+                    <Image src={user.photoURL} alt={user.displayName || ''} width={48} height={48} className="rounded-full ring-2 ring-white dark:ring-gray-800" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold ring-2 ring-white dark:ring-gray-800">
+                      {user.displayName?.charAt(0) || 'U'}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full" />
                 </div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Owner</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{user.displayName} (you)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                </div>
+                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider rounded-full">Owner</span>
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Add people and groups</label>
-                <input 
-                  type="text" 
-                  placeholder="Add emails..."
-                  className="w-full p-3 bg-gray-50 dark:bg-[#1A1C1E] border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600"
-                />
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Add people and groups</label>
+                <div className="relative group">
+                  <input 
+                    type="text" 
+                    placeholder="Enter email address..."
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 transition-all"
+                  />
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+              <div className="pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <button 
-                  onClick={() => setIsShareModalOpen(false)}
-                  className="px-6 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/?docId=${currentDocId}&ownerId=${currentOwnerId}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    setIsShareModalOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all active:scale-95"
                 >
-                  Copy link
+                  <LinkIcon size={18} />
+                  <span>Copy link</span>
                 </button>
-                <button 
-                  onClick={() => setIsShareModalOpen(false)}
-                  className="px-6 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-full transition-colors"
-                >
-                  Done
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="px-8 py-2.5 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -520,20 +604,23 @@ export default function Home() {
       )}
 
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#2D2F31] rounded-2xl p-6 w-[400px] shadow-2xl transition-colors">
-            <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">{confirmModal.title}</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{confirmModal.message}</p>
-            <div className="flex justify-end gap-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#1A1C1E] rounded-[32px] p-8 w-full max-w-[420px] shadow-2xl transition-all border border-gray-200 dark:border-gray-800 scale-in-center">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mb-6">
+              <Trash2 size={32} className="text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">{confirmModal.title}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-8">{confirmModal.message}</p>
+            <div className="flex gap-3">
               <button 
                 onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="flex-1 px-6 py-3 text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmModal.onConfirm}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+                className="flex-1 px-6 py-3 text-sm font-bold bg-red-600 text-white hover:bg-red-700 rounded-2xl transition-all shadow-lg shadow-red-600/20 active:scale-95"
               >
                 Delete
               </button>
