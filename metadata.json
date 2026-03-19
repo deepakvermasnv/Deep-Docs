@@ -1,0 +1,5 @@
+{
+  "name": "Docs Clone",
+  "description": "A modern Google Docs-like editor built with Next.js and TipTap.",
+  "requestFramePermissions": []
+}
