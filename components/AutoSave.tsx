@@ -9,31 +9,38 @@ interface AutoSaveProps {
   docId: string | null;
   content: string;
   title: string;
+  comments: any[];
   onStatusChange: (status: 'Saving...' | 'Saved') => void;
 }
 
-const AutoSave = ({ userId, docId, content, title, onStatusChange }: AutoSaveProps) => {
+const AutoSave = ({ userId, docId, content, title, comments, onStatusChange }: AutoSaveProps) => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContent = useRef(content);
   const lastSavedTitle = useRef(title);
+  const lastSavedComments = useRef(JSON.stringify(comments));
 
   const performSave = useCallback(async () => {
     if (!userId || !docId) return;
     
     try {
-      await saveDocument(db, userId, docId, { content, title });
+      await saveDocument(db, userId, docId, { content, title, comments });
       onStatusChange('Saved');
       lastSavedContent.current = content;
       lastSavedTitle.current = title;
+      lastSavedComments.current = JSON.stringify(comments);
     } catch (error) {
       console.error('AutoSave failed:', error);
       // We don't change status to 'Saved' if it fails
     }
-  }, [userId, docId, content, title, onStatusChange]);
+  }, [userId, docId, content, title, comments, onStatusChange]);
 
   useEffect(() => {
-    // Only trigger if content or title actually changed from last saved state
-    if (content === lastSavedContent.current && title === lastSavedTitle.current) {
+    // Only trigger if content, title or comments actually changed from last saved state
+    if (
+      content === lastSavedContent.current && 
+      title === lastSavedTitle.current &&
+      JSON.stringify(comments) === lastSavedComments.current
+    ) {
       return;
     }
 
@@ -50,7 +57,7 @@ const AutoSave = ({ userId, docId, content, title, onStatusChange }: AutoSavePro
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [content, title, userId, docId, onStatusChange, performSave]);
+  }, [content, title, comments, userId, docId, onStatusChange, performSave]);
 
   return null; // This is a logic-only component
 };

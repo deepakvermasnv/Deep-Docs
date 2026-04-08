@@ -116,32 +116,34 @@ const Navbar = ({
                 <div 
                   key={menu.label} 
                   className="relative"
-                  onMouseEnter={() => setActiveMenu(menu.label)}
-                  onMouseLeave={() => setActiveMenu(null)}
                 >
                   <button 
+                    onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                     className={`px-2.5 py-1 rounded-md transition-colors text-sm font-medium ${activeMenu === menu.label ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     {menu.label}
                   </button>
                   {activeMenu === menu.label && (
-                    <div 
-                      className="absolute top-full left-0 mt-0.5 w-56 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150"
-                    >
-                      {menu.items.map((item) => (
-                        <button
-                          key={item.label}
-                          onClick={() => {
-                            item.onClick();
-                            setActiveMenu(null);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
-                        >
-                          <span className="text-gray-400 dark:text-gray-500">{item.icon}</span>
-                          <span className="flex-1">{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setActiveMenu(null)} />
+                      <div 
+                        className="absolute top-full left-0 mt-0.5 w-56 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150"
+                      >
+                        {menu.items.map((item) => (
+                          <button
+                            key={item.label}
+                            onClick={() => {
+                              item.onClick();
+                              setActiveMenu(null);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
+                          >
+                            <span className="text-gray-400 dark:text-gray-500">{item.icon}</span>
+                            <span className="flex-1">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               ))}

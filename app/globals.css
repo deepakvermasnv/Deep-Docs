@@ -22,7 +22,7 @@
 
 /* Page-like styling */
 .prose {
-  color: #3c4043;
+  color: var(--text-primary);
   max-width: none;
 }
 

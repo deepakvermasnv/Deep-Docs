@@ -30,6 +30,7 @@ interface Document {
   id: string;
   title: string;
   content: string;
+  comments?: any[];
   lastOpened: string;
   isStarred: boolean;
   isTrashed: boolean;
@@ -58,6 +59,28 @@ export default function Home() {
     message: '',
     onConfirm: () => {},
   });
+
+  // Initialize dark mode from localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'true') {
+      setDarkMode(true);
+    } else if (savedMode === 'false') {
+      setDarkMode(false);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setDarkMode(true);
+    }
+  }, []);
+
+  // Persist dark mode and apply class
+  useEffect(() => {
+    localStorage.setItem('darkMode', darkMode.toString());
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Auth listener
   useEffect(() => {
@@ -115,7 +138,6 @@ export default function Home() {
       path
     };
     console.error('Firestore Error: ', JSON.stringify(errInfo));
-    // throw new Error(JSON.stringify(errInfo)); // We'll just log it for now to avoid crashing the whole app UI
   };
 
   // Firestore listener for documents
@@ -202,6 +224,16 @@ export default function Home() {
     setDocuments((prev) =>
       prev.map((doc) =>
         doc.id === currentDocId ? { ...doc, content: newContent } : doc
+      )
+    );
+  }, [currentDocId, user]);
+
+  const handleCommentsChange = useCallback((newComments: any[]) => {
+    if (!currentDocId || !user) return;
+    
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === currentDocId ? { ...doc, comments: newComments } : doc
       )
     );
   }, [currentDocId, user]);
@@ -401,14 +433,6 @@ export default function Home() {
   }, [handleNewDoc]);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  useEffect(() => {
     const handleDownloadPdf = async () => {
       if (!currentDoc) return;
       
@@ -463,11 +487,11 @@ export default function Home() {
   }
 
   if (!user) {
-    return <Login />;
+    return <Login darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${darkMode ? 'dark' : ''}`}>
       <Sidebar
         documents={filteredDocuments}
         currentDocId={currentDocId || ''}
@@ -480,7 +504,7 @@ export default function Home() {
         onNewDoc={handleNewDoc}
         onViewChange={setView}
       />
-      <div className={`flex flex-col flex-1 min-w-0 ${darkMode ? 'dark' : ''}`}>
+      <div className="flex flex-col flex-1 min-w-0">
         <Navbar
           title={currentDoc?.title || 'Untitled document'}
           isStarred={currentDoc?.isStarred || false}
@@ -502,6 +526,7 @@ export default function Home() {
             docId={currentDocId}
             content={currentDoc?.content || ''}
             title={currentDoc?.title || ''}
+            comments={currentDoc?.comments || []}
             onStatusChange={setSaveStatus}
           />
         )}
@@ -511,7 +536,10 @@ export default function Home() {
             ownerId={currentOwnerId}
             docId={currentDocId}
             content={currentDoc.content}
+            comments={currentDoc.comments || []}
+            userEmail={user.email || undefined}
             onChange={handleContentChange}
+            onCommentsChange={handleCommentsChange}
             onEditorReady={setEditor}
             darkMode={darkMode}
           />

@@ -9,6 +9,7 @@ import {
 export interface DocumentData {
   title: string;
   content: string;
+  comments?: any[];
   updatedAt?: any;
 }
 

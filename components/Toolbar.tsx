@@ -26,12 +26,93 @@ import {
   Printer,
   Indent,
   Outdent,
+  Strikethrough,
+  Subscript as SubscriptIcon,
+  Superscript as SuperscriptIcon,
+  Search,
+  MessageSquare,
+  Check,
+  ChevronRight,
+  Sparkles,
+  SpellCheck,
 } from 'lucide-react';
 import { Editor } from '@tiptap/react';
 
 interface ToolbarProps {
   editor: Editor | null;
+  onToggleSearch?: () => void;
+  onToggleComments?: () => void;
+  onToggleTOC?: () => void;
+  onSummarize?: () => void;
+  isSpellCheckEnabled?: boolean;
+  onToggleSpellCheck?: () => void;
 }
+
+const TextStyleDropdown = ({ editor }: { editor: Editor }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const styles = [
+    { label: 'Normal text', value: 'paragraph', active: editor.isActive('paragraph') || (!editor.isActive('heading') && !editor.isActive('bulletList') && !editor.isActive('orderedList') && !editor.isActive('taskList')), command: () => editor.chain().focus().setParagraph().run(), className: 'text-base' },
+    { label: 'Title', value: 'heading-1', active: editor.isActive('heading', { level: 1 }), command: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), className: 'text-3xl font-bold' },
+    { label: 'Subtitle', value: 'heading-2', active: editor.isActive('heading', { level: 2 }), command: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), className: 'text-xl text-gray-500 font-medium' },
+    { label: 'Heading 1', value: 'heading-3', active: editor.isActive('heading', { level: 3 }), command: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), className: 'text-2xl font-semibold' },
+    { label: 'Heading 2', value: 'heading-4', active: editor.isActive('heading', { level: 4 }), command: () => editor.chain().focus().toggleHeading({ level: 4 }).run(), className: 'text-xl font-semibold' },
+    { label: 'Heading 3', value: 'heading-5', active: editor.isActive('heading', { level: 5 }), command: () => editor.chain().focus().toggleHeading({ level: 5 }).run(), className: 'text-lg font-semibold' },
+  ];
+
+  const currentStyle = styles.find(s => s.active)?.label || 'Normal text';
+
+  return (
+    <div className="relative w-40" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
+      >
+        <span className="truncate">{currentStyle}</span>
+        <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl z-50 py-2">
+          {styles.map((style, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                style.command();
+                setIsOpen(false);
+              }}
+              className="w-full flex items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+            >
+              <div className="w-6 flex-shrink-0">
+                {style.active && <Check size={16} className="text-gray-600 dark:text-gray-400" />}
+              </div>
+              <span className={`flex-1 text-left text-gray-900 dark:text-gray-100 ${style.className}`}>
+                {style.label}
+              </span>
+              <ChevronRight size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          ))}
+          <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+          <button className="w-full flex items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
+            <div className="w-6 flex-shrink-0" />
+            <span className="flex-1 text-left text-gray-700 dark:text-gray-300 text-sm">Options</span>
+            <ChevronRight size={14} className="text-gray-400" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ToolbarDropdown = ({ 
   value, 
@@ -71,7 +152,7 @@ const ToolbarDropdown = ({
         <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150 max-h-60 overflow-y-auto no-scrollbar">
+        <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-[#2D2F31] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 py-1.5 max-h-60 overflow-y-auto no-scrollbar">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -94,7 +175,7 @@ const ToolbarDropdown = ({
   );
 };
 
-const Toolbar = ({ editor }: ToolbarProps) => {
+const Toolbar = ({ editor, onToggleSearch, onToggleComments, onToggleTOC, onSummarize, isSpellCheckEnabled, onToggleSpellCheck }: ToolbarProps) => {
   if (!editor) return null;
 
   const setLink = () => {
@@ -149,6 +230,12 @@ const Toolbar = ({ editor }: ToolbarProps) => {
     { label: 'Times New Roman', value: 'Times New Roman' },
     { label: 'Verdana', value: 'Verdana' },
     { label: 'Inter', value: 'Inter' },
+    { label: 'Roboto', value: 'Roboto' },
+    { label: 'Open Sans', value: 'Open Sans' },
+    { label: 'Montserrat', value: 'Montserrat' },
+    { label: 'Playfair Display', value: 'Playfair Display' },
+    { label: 'Lato', value: 'Lato' },
+    { label: 'Oswald', value: 'Oswald' },
   ];
 
   const zoomLevels = [
@@ -186,6 +273,37 @@ const Toolbar = ({ editor }: ToolbarProps) => {
     },
     { type: 'divider' },
     {
+      icon: <Search size={18} />,
+      onClick: onToggleSearch,
+      isActive: false,
+      label: 'Find and Replace (Ctrl+F)',
+    },
+    {
+      icon: <MessageSquare size={18} />,
+      onClick: onToggleComments,
+      isActive: false,
+      label: 'Comments',
+    },
+    {
+      icon: <List size={18} />,
+      onClick: onToggleTOC,
+      isActive: false,
+      label: 'Table of Contents',
+    },
+    {
+      icon: <Sparkles size={18} />,
+      onClick: onSummarize,
+      isActive: false,
+      label: 'AI Summarize',
+    },
+    {
+      icon: <SpellCheck size={18} />,
+      onClick: onToggleSpellCheck,
+      isActive: isSpellCheckEnabled,
+      label: 'Spell Check',
+    },
+    { type: 'divider' },
+    {
       type: 'custom',
       component: (
         <ToolbarDropdown
@@ -201,6 +319,11 @@ const Toolbar = ({ editor }: ToolbarProps) => {
           }}
         />
       ),
+    },
+    { type: 'divider' },
+    {
+      type: 'custom',
+      component: <TextStyleDropdown editor={editor} />,
     },
     { type: 'divider' },
     {
@@ -245,6 +368,24 @@ const Toolbar = ({ editor }: ToolbarProps) => {
       label: 'Underline',
     },
     {
+      icon: <Strikethrough size={18} />,
+      onClick: () => editor.chain().focus().toggleStrike().run(),
+      isActive: editor.isActive('strike'),
+      label: 'Strikethrough',
+    },
+    {
+      icon: <SubscriptIcon size={18} />,
+      onClick: () => editor.chain().focus().toggleSubscript().run(),
+      isActive: editor.isActive('subscript'),
+      label: 'Subscript',
+    },
+    {
+      icon: <SuperscriptIcon size={18} />,
+      onClick: () => editor.chain().focus().toggleSuperscript().run(),
+      isActive: editor.isActive('superscript'),
+      label: 'Superscript',
+    },
+    {
       icon: <Palette size={18} />,
       onClick: () => {
         const color = window.prompt('Color (hex or name)', '#000000');
@@ -261,31 +402,6 @@ const Toolbar = ({ editor }: ToolbarProps) => {
       },
       isActive: editor.isActive('highlight'),
       label: 'Highlight',
-    },
-    { type: 'divider' },
-    {
-      icon: <Heading1 size={18} />,
-      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      isActive: editor.isActive('heading', { level: 1 }),
-      label: 'Heading 1',
-    },
-    {
-      icon: <Heading2 size={18} />,
-      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      isActive: editor.isActive('heading', { level: 2 }),
-      label: 'Heading 2',
-    },
-    {
-      icon: <Heading3 size={18} />,
-      onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      isActive: editor.isActive('heading', { level: 3 }),
-      label: 'Heading 3',
-    },
-    {
-      icon: <Type size={18} />,
-      onClick: () => editor.chain().focus().setParagraph().run(),
-      isActive: editor.isActive('paragraph'),
-      label: 'Normal text',
     },
     { type: 'divider' },
     {
@@ -361,8 +477,9 @@ const Toolbar = ({ editor }: ToolbarProps) => {
   ];
 
   return (
-    <div className="sticky top-0 z-20 bg-white dark:bg-[#1A1C1E] border-b border-gray-200 dark:border-gray-800 px-4 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar transition-colors">
-      {buttons.map((btn, i) => {
+    <div className="sticky top-0 z-20 bg-white dark:bg-[#1A1C1E] border-b border-gray-200 dark:border-gray-800 px-4 py-1.5 flex items-center gap-1 transition-colors">
+      <div className="flex items-center gap-1 flex-wrap flex-1">
+        {buttons.map((btn, i) => {
         if (btn.type === 'divider') {
           return <div key={i} className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1.5 flex-shrink-0" />;
         }
@@ -386,6 +503,7 @@ const Toolbar = ({ editor }: ToolbarProps) => {
           </button>
         );
       })}
+      </div>
     </div>
   );
 };

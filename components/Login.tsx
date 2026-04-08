@@ -3,9 +3,14 @@
 import React from 'react';
 import { auth, provider } from '@/lib/firebase';
 import { signInWithPopup } from 'firebase/auth';
-import { LogIn, FileText } from 'lucide-react';
+import { LogIn, FileText, Moon, Sun } from 'lucide-react';
 
-const Login = () => {
+interface LoginProps {
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
+}
+
+const Login = ({ darkMode, onToggleDarkMode }: LoginProps) => {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, provider);
@@ -15,7 +20,14 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#F8F9FA] dark:bg-[#0E1113] p-4">
+    <div className="flex flex-col items-center justify-center h-screen bg-[#F8F9FA] dark:bg-[#0E1113] p-4 relative transition-colors duration-300">
+      <button 
+        onClick={onToggleDarkMode}
+        className="absolute top-8 right-8 p-3 bg-white dark:bg-[#1A1C1E] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all text-gray-600 dark:text-gray-400 active:scale-95"
+      >
+        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+
       <div className="bg-white dark:bg-[#1A1C1E] p-12 rounded-[32px] shadow-2xl flex flex-col items-center gap-8 w-full max-w-[440px] border border-gray-200 dark:border-gray-800 transition-all">
         <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20 animate-in zoom-in duration-500">
           <FileText size={40} />
